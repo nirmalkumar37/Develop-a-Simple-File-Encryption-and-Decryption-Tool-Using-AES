@@ -1,0 +1,5 @@
+# Encrypt a file
+python main.py encrypt yourfile.txt
+
+# Decrypt a file
+python main.py decrypt yourfile.txt.aes
