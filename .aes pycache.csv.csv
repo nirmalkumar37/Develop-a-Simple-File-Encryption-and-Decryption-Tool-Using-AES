@@ -1,0 +1,84 @@
+Line Number,Code
+1,import os
+2,import sys
+3,import getpass
+4,from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+5,from cryptography.hazmat.primitives import hashes
+6,"from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes"
+7,from cryptography.hazmat.backends import default_backend
+8,from cryptography.hazmat.primitives import padding
+9,import base64
+10,import secrets
+11,
+12,"def derive_key(password: bytes, salt: bytes) -> bytes:"
+13,"    """"""Derive a 256-bit AES key from the password and salt."""""""
+14,    kdf = PBKDF2HMAC(
+15,"        algorithm=hashes.SHA256(),"
+16,"        length=32,  # 256-bit key"
+17,"        salt=salt,"
+18,"        iterations=100000,"
+19,        backend=default_backend()
+20,    )
+21,    return kdf.derive(password)
+22,
+23,"def encrypt_file(filename: str, password: str):"
+24,"    with open(filename, 'rb') as f:"
+25,        data = f.read()
+26,
+27,    salt = secrets.token_bytes(16)
+28,    iv = secrets.token_bytes(16)
+29,"    key = derive_key(password.encode(), salt)"
+30,
+31,    padder = padding.PKCS7(128).padder()
+32,    padded_data = padder.update(data) + padder.finalize()
+33,
+34,"    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())"
+35,    encryptor = cipher.encryptor()
+36,    encrypted = encryptor.update(padded_data) + encryptor.finalize()
+37,
+38,"    with open(filename + '.aes', 'wb') as f:"
+39,        f.write(salt + iv + encrypted)
+40,
+41,"    print(f""Encrypted file saved as {filename}.aes"")"
+42,
+43,"def decrypt_file(filename: str, password: str):"
+44,"    with open(filename, 'rb') as f:"
+45,        content = f.read()
+46,
+47,    salt = content[:16]
+48,    iv = content[16:32]
+49,    encrypted_data = content[32:]
+50,
+51,"    key = derive_key(password.encode(), salt)"
+52,
+53,"    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())"
+54,    decryptor = cipher.decryptor()
+55,    padded_data = decryptor.update(encrypted_data) + decryptor.finalize()
+56,
+57,    unpadder = padding.PKCS7(128).unpadder()
+58,    data = unpadder.update(padded_data) + unpadder.finalize()
+59,
+60,"    output_file = filename.replace('.aes', '')"
+61,"    with open(output_file, 'wb') as f:"
+62,        f.write(data)
+63,
+64,"    print(f""Decrypted file saved as {output_file}"")"
+65,
+66,def main():
+67,"    if len(sys.argv) != 3 or sys.argv[1] not in ['encrypt', 'decrypt']:"
+68,"        print(""Usage:"")"
+69,"        print(""  python main.py encrypt <filename>"")"
+70,"        print(""  python main.py decrypt <filename.aes>"")"
+71,        return
+72,
+73,    mode = sys.argv[1]
+74,    file = sys.argv[2]
+75,"    password = getpass.getpass(""Enter password: "")"
+76,
+77,    if mode == 'encrypt':
+78,"        encrypt_file(file, password)"
+79,    else:
+80,"        decrypt_file(file, password)"
+81,
+82,"if __name__ == ""__main__"":"
+83,    main()
